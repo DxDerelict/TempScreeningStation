@@ -19,12 +19,15 @@
 #define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
 int tempError = 0; 
+unsigned long wait_time = 4000;
+
 int thresh = 400;      // distance threshhold value
 int sensorPin = A0;    // input pin for distance sensor
 int proxSwitch = 10;
-int sensorValue = 0; 
+int distance = 0; 
 bool presence = 0;
-unsigned long wait_time = 4000;
+short int minDist = 5;
+short int maxDist = 14;
 
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET); //Declaring the display name (display)
@@ -57,7 +60,7 @@ void setup() {
   display.println("YSU Robotics: ");
   display.setTextSize(2);
   display.setCursor(50, 0);
-  display.println(sensorValue, 1);
+  display.println(distance, 1);
   delay(1000);
 
 
@@ -69,24 +72,42 @@ void setup() {
 
 
 void loop() {
-  if (presenceCheck()) {
-    TempDump();
+  while(presenceCheck()) {
+    if(distance >= maxDist){
+        display.clearDisplay();
+        display.setTextSize(2);
+        display.setCursor(50, 17);
+        display.println("Move closer");
+    }
+    else if (distance < minDist){
+        display.clearDisplay();
+        display.setTextSize(2);
+        display.setCursor(50, 17);
+        display.println("Move back");
+    }
+    else {
+        display.clearDisplay();
+        display.setTextSize(2);
+        display.setCursor(50, 17);
+        display.println("Hold position...");
+        delay(400);
+        TempScan();
+
+    }
+
   }
-  else {
     digitalWrite(proxSwitch, LOW);
     LowPower.powerDown(SLEEP_4S, ADC_OFF, BOD_OFF);
     // TIMER2_OFF, TIMER1_OFF, TIMER0_OFF, SPI_OFF, USART0_OFF, TWI_OFF
   }
-
-}
 
 // This function runs the ADC and distance sensor
 bool presenceCheck(void) {
   
   digitalWrite(proxSwitch, HIGH);
   delay(150);
-  sensorValue = analogRead(sensorPin);
-  if (sensorValue >= thresh) {
+  distance = analogRead(sensorPin);
+  if (distance >= thresh) {
     return true;
   }
   else {
@@ -96,19 +117,18 @@ bool presenceCheck(void) {
 }
 
 
-void TempDump(void) {
+void TempScan(void) {
   unsigned int current_counter = millis();
   display.ssd1306_command(SSD1306_DISPLAYON);
-  while (presenceCheck()&& (current_counter - millis() > wait_time)) {
+  while (presenceCheck() && (current_counter - millis() > wait_time)) {
     display.clearDisplay();
-
     display.setTextSize(1);
     display.setTextColor(WHITE);
     display.setCursor(0, 4);
     display.println("Analog");
     display.setTextSize(2);
     display.setCursor(50, 0);
-    display.println(sensorValue, 1);
+    display.println(distance, 1);
 
     display.setCursor(110, 0);
     display.println("U");
